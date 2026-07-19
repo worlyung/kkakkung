@@ -1,0 +1,201 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #3a2e28;
+  background: #fffdf9;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+  background: #fffdf9;
+  color: #3a2e28;
+  font-family: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
+  /* 텍스트 렌더링 개선 */
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+/* 눌리는 느낌 — 모든 버튼/주요 링크에 부드러운 hover·press. (.cta는 버튼처럼 쓰는 <a>) */
+button,
+[role="button"],
+.cta {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+}
+
+button:not(:disabled),
+.cta {
+  transition: filter 150ms ease, transform 120ms ease, background-color 150ms ease, color 150ms ease;
+}
+
+/* hover는 마우스가 있는 기기에서만 (폰에서 탭 후 눌린 색이 남는 것 방지) */
+@media (hover: hover) {
+  button:not(:disabled):hover,
+  .cta:hover {
+    filter: brightness(0.96);
+  }
+}
+
+button:not(:disabled):active,
+.cta:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled),
+  .cta {
+    transition: none;
+  }
+  button:not(:disabled):active,
+  .cta:active {
+    transform: none;
+  }
+}
+
+img {
+  max-width: 100%;
+}
+
+/* 홈 화면 등장 애니메이션 — 까꿍! 하고 나타나는 느낌 */
+@keyframes kkakkung-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes kkakkung-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes kkakkung-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+.anim-pop {
+  animation: kkakkung-pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.anim-up {
+  animation: kkakkung-up 0.55s ease-out both;
+}
+.anim-float {
+  animation: kkakkung-float 3.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-pop,
+  .anim-up,
+  .anim-float {
+    animation: none;
+  }
+}
+
+/* 갤러리 사진 카드 — 마우스 있는 기기에서만 살짝 떠오르고 사진이 은은히 확대 */
+.photo-card {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+.photo-card .photo-img {
+  transition: transform 300ms ease;
+}
+@media (hover: hover) {
+  .photo-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 24px 50px rgba(90, 60, 40, 0.18);
+  }
+  .photo-card:hover .photo-img {
+    transform: scale(1.05);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .photo-card,
+  .photo-card .photo-img {
+    transition: none;
+  }
+  .photo-card:hover {
+    transform: none;
+  }
+  .photo-card:hover .photo-img {
+    transform: none;
+  }
+}
+
+/* 포커스 링 — apricot 색상으로 통일 */
+:focus-visible {
+  outline: 3px solid #e8894c;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* 입력 요소 포커스 시 outline 제거 (border로 처리) */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+}
+
+/* 스크롤바 — 얇고 세련되게 (WebKit) */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #e8d5c4;
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #cbb9a8;
+}
+
+/* iOS safe area — 라이트박스 하단 패딩 */
+.pb-safe-bottom {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+/* 고대비 모드 — 흐릿한 회색 글자를 진하게, 얇은 선을 뚜렷하게 (백내장·노안 대응) */
+html.hi-contrast .text-ink-soft {
+  color: #4a3f38 !important;
+}
+html.hi-contrast .text-white\/70 {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+html.hi-contrast .border-line {
+  border-color: #cbb9a8 !important;
+}
