@@ -74,6 +74,7 @@ export function AlbumGallery({
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [added, setAdded] = useState<Record<string, PhotoComment[]>>({});
   const [text, setText] = useState("");
+  const [replyTo, setReplyTo] = useState<{ id: string; name: string } | null>(null);
   const [sending, setSending] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [zoomed, setZoomed] = useState(false);
@@ -152,6 +153,19 @@ export function AlbumGallery({
   const hasActiveFilter =
     Boolean(picked) || favoritesOnly || year !== null || month !== null || emotionFilter !== null || query.trim().length > 0;
 
+  // 맨 위 알림 배너(ReplyNotices)에서 답글을 누르면 그 사진을 크게 연다
+  useEffect(() => {
+    function onOpenPhoto(event: Event) {
+      const photoId = (event as CustomEvent<string>).detail;
+      const index = flat.findIndex((photo) => photo.id === photoId);
+      if (index >= 0) {
+        setOpenIndex(index);
+      }
+    }
+    window.addEventListener("kkakkung:open-photo", onOpenPhoto);
+    return () => window.removeEventListener("kkakkung:open-photo", onOpenPhoto);
+  }, [flat]);
+
   function close() {
     setOpenIndex(null);
     setPlaying(false);
@@ -221,6 +235,11 @@ export function AlbumGallery({
     return () => clearInterval(timer);
   }, [playing, openIndex, flat.length, open?.isVideo]);
 
+  // 사진을 넘기거나 닫으면 답글 대상은 해제한다
+  useEffect(() => {
+    setReplyTo(null);
+  }, [openIndex]);
+
   async function submitComment() {
     if (!open || !text.trim() || sending) {
       return;
@@ -230,13 +249,14 @@ export function AlbumGallery({
       const res = await fetch(`/a/${slug}/comment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ photoId: open.id, body: text.trim() }),
+        body: JSON.stringify({ photoId: open.id, body: text.trim(), parentId: replyTo?.id ?? null }),
       });
       const data = (await res.json()) as { comment?: PhotoComment };
       if (res.ok && data.comment) {
         const comment = data.comment;
         setAdded((prev) => ({ ...prev, [comment.photoId]: [...(prev[comment.photoId] ?? []), comment] }));
         setText("");
+        setReplyTo(null);
       }
     } finally {
       setSending(false);
@@ -301,6 +321,20 @@ export function AlbumGallery({
   }
 
   const openComments = open ? [...open.comments, ...(added[open.id] ?? [])] : [];
+  // 답글은 원 한마디 밑에 모아 보여준다. 부모가 없는(지워진) 답글은 그냥 맨 윗줄로.
+  const openCommentIds = new Set(openComments.map((comment) => comment.id));
+  const openTopComments = openComments.filter((comment) => !(comment.parentId && openCommentIds.has(comment.parentId)));
+  const openRepliesByParent = new Map<string, PhotoComment[]>();
+  for (const comment of openComments) {
+    if (comment.parentId && openCommentIds.has(comment.parentId)) {
+      const list = openRepliesByParent.get(comment.parentId);
+      if (list) {
+        list.push(comment);
+      } else {
+        openRepliesByParent.set(comment.parentId, [comment]);
+      }
+    }
+  }
   const hasPrev = openIndex !== null && openIndex > 0;
   const hasNext = openIndex !== null && openIndex < flat.length - 1;
   const openReact = open ? (reactState[open.id] ?? { count: open.reactionCount, mine: open.iReacted }) : null;
@@ -706,13 +740,32 @@ export function AlbumGallery({
               ) : null}
             </div>
 
-            {/* 댓글 목록 */}
+            {/* 댓글 목록 — 답글은 원 한마디 밑에 들여쓰기 */}
             {openComments.length > 0 ? (
               <ul className="mt-3 space-y-2 border-t border-white/10 pt-3">
-                {openComments.map((comment) => (
+                {openTopComments.map((comment) => (
                   <li key={comment.id} className="text-sm leading-6 text-white/90">
                     <span className="font-bold text-apricot">{comment.name}</span>{" "}
                     {comment.body}
+                    {canComment ? (
+                      <button
+                        type="button"
+                        onClick={() => setReplyTo({ id: comment.id, name: comment.name })}
+                        className="ml-2 text-xs font-bold text-white/50"
+                      >
+                        답글
+                      </button>
+                    ) : null}
+                    {(openRepliesByParent.get(comment.id) ?? []).length > 0 ? (
+                      <ul className="mt-1 space-y-1 border-l-2 border-white/15 pl-3">
+                        {(openRepliesByParent.get(comment.id) ?? []).map((reply) => (
+                          <li key={reply.id} className="text-sm leading-6 text-white/80">
+                            <span className="font-bold text-apricot">{reply.name}</span>{" "}
+                            {reply.body}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -720,7 +773,18 @@ export function AlbumGallery({
 
             {/* 댓글 입력 */}
             {canComment ? (
-              <div className="mt-3 flex gap-2">
+              <div className="mt-3">
+                {replyTo ? (
+                  <div className="mb-1.5 flex items-center gap-2 text-xs text-white/60">
+                    <span>
+                      ↳ <span className="font-bold text-apricot">{replyTo.name}</span>님에게 답글
+                    </span>
+                    <button type="button" onClick={() => setReplyTo(null)} aria-label="답글 취소" className="font-bold text-white/50">
+                      ✕
+                    </button>
+                  </div>
+                ) : null}
+                <div className="flex gap-2">
                 <input
                   value={text}
                   onChange={(event) => setText(event.target.value)}
@@ -730,8 +794,8 @@ export function AlbumGallery({
                     }
                   }}
                   maxLength={300}
-                  placeholder="한마디 남기기…"
-                  aria-label="한마디 남기기"
+                  placeholder={replyTo ? "답글 남기기…" : "한마디 남기기…"}
+                  aria-label={replyTo ? "답글 남기기" : "한마디 남기기"}
                   className="min-h-11 flex-1 rounded-2xl border border-white/20 bg-white/10 px-4 text-sm text-white placeholder:text-white/40 focus:border-apricot focus:outline-none"
                 />
                 <button
@@ -742,6 +806,7 @@ export function AlbumGallery({
                 >
                   남기기
                 </button>
+                </div>
               </div>
             ) : null}
 

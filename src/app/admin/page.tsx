@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import Link from "next/link";
 import { BackupSection } from "@/components/BackupSection";
+import { Button } from "@/components/ui/Button";
 import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { ConfirmForm } from "@/components/ConfirmForm";
 import { ScrollRestore } from "@/components/ScrollRestore";
@@ -103,9 +104,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   className="mt-2 min-h-12 w-full rounded-2xl border-2 border-line px-4 text-center text-2xl tracking-[0.4em] focus:border-apricot focus:outline-none"
                 />
               </div>
-              <button className="min-h-12 w-full rounded-2xl bg-apricot px-6 text-lg font-bold text-white shadow-soft" type="submit">
+              <Button size="lg" block type="submit">
                 들어가기
-              </button>
+              </Button>
             </form>
           ) : (
             <Link
@@ -183,9 +184,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               가족 화면
             </a>
             <form action="/admin/logout" method="post">
-              <button className="min-h-10 rounded-2xl border-2 border-line px-4 text-base font-bold" type="submit">
+              <Button variant="secondary" size="sm" type="submit">
                 나가기
-              </button>
+              </Button>
             </form>
           </div>
         </div>
@@ -220,6 +221,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         ) : null}
       </section>
 
+      {/* ── 사진·영상 올리기 — 가장 많이 쓰니 맨 위 ── */}
+      <div className="mt-4">
+        <UploadForm kids={kids} />
+      </div>
+
       {/* ── 링크 카드 (복사는 항상 보임) ── */}
       <section className="mt-4 rounded-[28px] bg-white p-6 shadow-soft">
         <h2 className="text-xl font-bold">가족에게 보낼 링크</h2>
@@ -244,12 +250,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             aria-label="앨범 이름"
             className="min-h-11 flex-1 rounded-2xl border-2 border-line px-4 text-base focus:border-apricot focus:outline-none"
           />
-          <button
-            type="submit"
-            className="min-h-11 shrink-0 rounded-2xl bg-apricot px-5 text-base font-bold text-white shadow-soft"
-          >
+          <Button type="submit" className="shrink-0">
             저장
-          </button>
+          </Button>
         </form>
       </CollapsibleSection>
 
@@ -317,11 +320,6 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         </div>
       </CollapsibleSection>
 
-      {/* ── 사진 올리기 ── */}
-      <div className="mt-4">
-        <UploadForm kids={kids} />
-      </div>
-
       {/* ── 백업 (사진·영상 내려받기) ── */}
       {backupItems.length > 0 ? (
         <CollapsibleSection title="백업 (사진 내려받기)" storageKey="backup">
@@ -364,9 +362,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                         className="mt-1 min-h-10 rounded-xl border-2 border-line px-3 text-base focus:border-apricot focus:outline-none"
                       />
                     </div>
-                    <button className="min-h-10 rounded-xl bg-apricot px-4 text-sm font-bold text-white" type="submit">
+                    <Button size="sm" type="submit">
                       저장
-                    </button>
+                    </Button>
                   </form>
                   <div className="mt-1.5 flex items-center justify-between px-0.5">
                     <span className="text-xs text-ink-soft">{age ?? "생일 없음"}</span>
@@ -409,9 +407,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               className="mt-1 min-h-11 rounded-2xl border-2 border-line px-4 text-base focus:border-apricot focus:outline-none"
             />
           </div>
-          <button className="min-h-11 rounded-2xl bg-apricot px-5 text-base font-bold text-white shadow-soft" type="submit">
+          <Button type="submit">
             추가
-          </button>
+          </Button>
         </form>
       </CollapsibleSection>
 
@@ -435,20 +433,21 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     aria-label="가족 이름"
                     className="min-h-10 flex-1 rounded-xl border-2 border-line px-3 text-base focus:border-apricot focus:outline-none"
                   />
-                  <button className="min-h-10 rounded-xl bg-apricot px-4 text-sm font-bold text-white" type="submit">
+                  <Button size="sm" type="submit">
                     저장
-                  </button>
+                  </Button>
                 </form>
                 <form action="/admin/viewers" method="post">
                   <input type="hidden" name="op" value="delete" />
                   <input type="hidden" name="id" value={viewer.id} />
-                  <button
-                    className="min-h-10 rounded-xl border border-line px-3 text-sm font-bold text-ink-soft"
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     type="submit"
                     aria-label={`${viewer.name} 지우기`}
                   >
                     지우기
-                  </button>
+                  </Button>
                 </form>
               </li>
             ))}
@@ -469,9 +468,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               className="mt-1 min-h-11 w-full rounded-2xl border-2 border-line px-4 text-base focus:border-apricot focus:outline-none"
             />
           </div>
-          <button className="min-h-11 rounded-2xl bg-apricot px-5 text-base font-bold text-white shadow-soft" type="submit">
+          <Button type="submit">
             추가
-          </button>
+          </Button>
         </form>
       </CollapsibleSection>
 
@@ -538,9 +537,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                         <span className="text-xs text-ink-soft">(안 고르면 온 가족)</span>
                       </div>
                     ) : null}
-                    <button className="w-full rounded-xl bg-apricot py-1.5 text-sm font-bold text-white" type="submit">
+                    <Button size="sm" block type="submit">
                       저장
-                    </button>
+                    </Button>
                   </form>
 
                   {/* 표지 지정 */}
@@ -558,12 +557,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     <form action="/admin/photos" method="post">
                       <input type="hidden" name="op" value="cover" />
                       <input type="hidden" name="id" value={photo.id} />
-                      <button
-                        className="w-full rounded-xl border border-line py-1.5 text-xs font-bold text-ink-soft"
-                        type="submit"
-                      >
+                      <Button variant="secondary" size="sm" block type="submit">
                         ☆ 표지로 지정
-                      </button>
+                      </Button>
                     </form>
                   )}
 
@@ -571,15 +567,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   <form action="/admin/photos" method="post">
                     <input type="hidden" name="op" value="trash" />
                     <input type="hidden" name="id" value={photo.id} />
-                    <button
-                      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-red-50 py-1.5 text-xs font-bold text-red-700"
-                      type="submit"
-                    >
+                    <Button variant="danger" size="sm" block type="submit">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3.5 w-3.5" aria-hidden>
                         <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
                       </svg>
                       삭제
-                    </button>
+                    </Button>
                   </form>
                 </figcaption>
               </figure>

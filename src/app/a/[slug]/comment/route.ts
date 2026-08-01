@@ -25,14 +25,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "누구신지 먼저 골라주세요." }, { status: 403 });
   }
 
-  const payload = (await request.json().catch(() => null)) as { photoId?: string; body?: string } | null;
+  const payload = (await request.json().catch(() => null)) as { photoId?: string; body?: string; parentId?: string } | null;
   const photoId = typeof payload?.photoId === "string" ? payload.photoId : "";
   const body = typeof payload?.body === "string" ? payload.body.trim() : "";
+  const parentId = typeof payload?.parentId === "string" && payload.parentId ? payload.parentId : null;
 
   if (!photoId || body.length < 1 || body.length > 300) {
     return NextResponse.json({ error: "한마디는 1~300자로 남겨주세요." }, { status: 400 });
   }
 
-  const comment = await addComment(album.id, photoId, viewer.id, body);
+  const comment = await addComment(album.id, photoId, viewer.id, body, parentId);
   return NextResponse.json({ comment });
 }

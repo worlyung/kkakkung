@@ -50,6 +50,7 @@ create table if not exists public.viewers (
   album_id uuid not null references public.albums(id) on delete cascade,
   name text not null check (char_length(trim(name)) between 1 and 40),
   last_seen_at timestamptz,
+  replies_checked_at timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -58,6 +59,7 @@ create table if not exists public.comments (
   id uuid primary key default gen_random_uuid(),
   photo_id uuid not null references public.photos(id) on delete cascade,
   viewer_id uuid not null references public.viewers(id) on delete cascade,
+  parent_id uuid references public.comments(id) on delete cascade,
   body text not null check (char_length(trim(body)) between 1 and 300),
   created_at timestamptz not null default now()
 );

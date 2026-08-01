@@ -1,6 +1,8 @@
 "use client";
 
 import { type FormEvent, useRef, useState } from "react";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 
 type SelectedPhoto = {
   id: string;
@@ -300,11 +302,49 @@ async function uploadOne(photo: SelectedPhoto): Promise<void> {
   }
 }
 
+const ACCEPTED_TYPES = new Set(Object.values(MIME_BY_EXTENSION));
+
 export function UploadForm({ kids }: { kids: { id: string; name: string }[] }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [photos, setPhotos] = useState<SelectedPhoto[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // 파일 선택·드롭 공통 처리. 사진·영상이 아닌 파일은 걸러낸다.
+  function pickFiles(files: File[]) {
+    const accepted = files.filter((file) => ACCEPTED_TYPES.has(inferMimeType(file)));
+    if (accepted.length === 0) {
+      setMessage("사진·영상 파일만 올릴 수 있어요.");
+      return;
+    }
+    const selected = accepted.map((file) => ({
+      id: `${file.name}-${file.size}-${file.lastModified}`,
+      file,
+      caption: "",
+      emotion: "",
+      childIds: [],
+      dateOverride: "",
+      previewUrl: URL.createObjectURL(file),
+      status: "대기",
+    }));
+    setPhotos((prev) => {
+      prev.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+      return selected;
+    });
+    setMessage(null);
+  }
+
+  // 잘못 고른 파일을 목록에서 한 장만 뺀다.
+  function removePhoto(id: string) {
+    setPhotos((current) => {
+      const target = current.find((item) => item.id === id);
+      if (target) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+      return current.filter((item) => item.id !== id);
+    });
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -339,34 +379,38 @@ export function UploadForm({ kids }: { kids: { id: string; name: string }[] }) {
       <label className="mt-6 block text-lg font-bold" htmlFor="photos">
         사진·영상 선택
       </label>
-      <input
-        ref={inputRef}
-        id="photos"
-        name="photos"
-        type="file"
-        accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif,video/mp4,video/quicktime,video/webm"
-        multiple
-        required
-        className="mt-3 block w-full rounded-2xl border-2 border-slate-300 bg-white p-4 text-lg"
-        onChange={(event) => {
-          const selected = Array.from(event.target.files ?? []).map((file) => ({
-            id: `${file.name}-${file.size}-${file.lastModified}`,
-            file,
-            caption: "",
-            emotion: "",
-            childIds: [],
-            dateOverride: "",
-            previewUrl: URL.createObjectURL(file),
-            status: "대기",
-          }));
-          setPhotos((prev) => {
-            prev.forEach((item) => URL.revokeObjectURL(item.previewUrl));
-            return selected;
-          });
-          setMessage(null);
+      {/* 드롭 존 — 컴퓨터에선 파일을 끌어다 놓아도 된다 */}
+      <div
+        onDragOver={(event) => {
+          event.preventDefault();
+          if (!isUploading) setIsDragging(true);
         }}
-        disabled={isUploading}
-      />
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={(event) => {
+          event.preventDefault();
+          setIsDragging(false);
+          if (isUploading) return;
+          pickFiles(Array.from(event.dataTransfer.files));
+        }}
+        className={`mt-3 rounded-2xl border-2 border-dashed p-4 transition-colors ${
+          isDragging ? "border-apricot bg-apricot-soft" : "border-slate-300 bg-white"
+        }`}
+      >
+        <input
+          ref={inputRef}
+          id="photos"
+          name="photos"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif,video/mp4,video/quicktime,video/webm"
+          multiple
+          className="block w-full text-lg"
+          onChange={(event) => pickFiles(Array.from(event.target.files ?? []))}
+          disabled={isUploading}
+        />
+        <p className="mt-2 hidden text-sm text-ink-soft sm:block">
+          컴퓨터에서는 사진·영상을 여기로 끌어다 놓아도 돼요.
+        </p>
+      </div>
 
       {message ? <p className="mt-5 rounded-2xl bg-red-50 p-4 text-lg font-bold text-red-700">{message}</p> : null}
 
@@ -398,7 +442,20 @@ export function UploadForm({ kids }: { kids: { id: string; name: string }[] }) {
                     <p className="text-base text-ink-soft">{formatSize(photo.file.size)}</p>
                   </div>
                 </div>
-                <span className="shrink-0 rounded-full bg-white px-3 py-1 text-base font-bold text-apricot-deep">{photo.status}</span>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="rounded-full bg-white px-3 py-1 text-base font-bold text-apricot-deep">{photo.status}</span>
+                  <button
+                    type="button"
+                    disabled={isUploading}
+                    onClick={() => removePhoto(photo.id)}
+                    aria-label={`${photo.file.name} 목록에서 빼기`}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-line bg-white text-ink-soft"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="h-4 w-4" aria-hidden>
+                      <path d="M6 6l12 12M18 6 6 18" />
+                    </svg>
+                  </button>
+                </div>
               </div>
               <span className="mt-3 block text-base font-bold">오늘 기분</span>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -432,7 +489,7 @@ export function UploadForm({ kids }: { kids: { id: string; name: string }[] }) {
               <label className="mt-3 block text-base font-bold" htmlFor={`caption-${index}`}>
                 한 줄 메모
               </label>
-              <input
+              <Input
                 id={`caption-${index}`}
                 type="text"
                 maxLength={120}
@@ -443,7 +500,7 @@ export function UploadForm({ kids }: { kids: { id: string; name: string }[] }) {
                   const caption = event.target.value;
                   setPhotos((current) => current.map((item) => (item.id === photo.id ? { ...item, caption } : item)));
                 }}
-                className="mt-2 min-h-12 w-full rounded-xl border border-line px-4 text-lg"
+                className="mt-2"
               />
               {kids.length > 0 ? (
                 <>
@@ -508,7 +565,7 @@ export function UploadForm({ kids }: { kids: { id: string; name: string }[] }) {
               <label className="mt-3 block text-base font-bold" htmlFor={`date-${index}`}>
                 찍은 날짜 (선택 — 안 넣으면 사진에서 자동)
               </label>
-              <input
+              <Input
                 id={`date-${index}`}
                 type="date"
                 value={photo.dateOverride}
@@ -517,20 +574,16 @@ export function UploadForm({ kids }: { kids: { id: string; name: string }[] }) {
                   const dateOverride = event.target.value;
                   setPhotos((current) => current.map((item) => (item.id === photo.id ? { ...item, dateOverride } : item)));
                 }}
-                className="mt-2 min-h-12 w-full rounded-xl border border-line px-4 text-lg"
+                className="mt-2"
               />
             </div>
           ))}
         </div>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={photos.length === 0 || isUploading}
-        className="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-apricot px-6 text-xl font-bold text-white shadow-soft disabled:bg-slate-400"
-      >
+      <Button size="lg" block type="submit" disabled={photos.length === 0 || isUploading} className="mt-6">
         {isUploading ? "올리는 중..." : "올리기"}
-      </button>
+      </Button>
     </form>
   );
 }

@@ -1,5 +1,7 @@
 import { AlbumGallery, type GalleryGroup, type GalleryPhoto } from "@/components/AlbumGallery";
 import { InstallButton } from "@/components/InstallButton";
+import { ReplyNotices, type ReplyNotice } from "@/components/ReplyNotices";
+import { Button } from "@/components/ui/Button";
 import { koreanAge } from "@/lib/age";
 import { getAlbumBySlug, listAlbumPhotos } from "@/lib/albums";
 import { listAlbumChildren } from "@/lib/children";
@@ -8,7 +10,7 @@ import { isVideoMime } from "@/lib/photos";
 import { listAlbumReactionCounts, listViewerReactions } from "@/lib/reactions";
 import { hasAlbumSession, readViewerIdentity } from "@/lib/session";
 import { getPrivateDownloadUrl, getPrivateObjectUrl } from "@/lib/storage";
-import { listAlbumViewers, touchViewer } from "@/lib/viewers";
+import { listAlbumViewers, markRepliesChecked, touchViewer } from "@/lib/viewers";
 import type { Metadata } from "next";
 import type { Album } from "@/types/database";
 
@@ -182,12 +184,9 @@ export default async function ViewerPage({ params, searchParams }: ViewerPagePro
               />
               <p className="mt-1.5 text-center text-xs text-ink-soft">숫자 4자리</p>
             </div>
-            <button
-              className="min-h-14 w-full rounded-2xl bg-apricot px-6 text-xl font-bold text-white shadow-soft"
-              type="submit"
-            >
+            <Button size="lg" block type="submit">
               사진 보기
-            </button>
+            </Button>
           </form>
         </section>
       </main>
@@ -212,15 +211,44 @@ export default async function ViewerPage({ params, searchParams }: ViewerPagePro
 
   const myReactions = me ? await listViewerReactions(album.id, me.id) : new Set<string>();
 
-  // 최근 다녀간 다른 가족 (나 제외)
-  const recentViewers = viewers
-    .filter((viewer) => viewer.last_seen_at && viewer.id !== me?.id)
-    .sort((a, b) => new Date(b.last_seen_at ?? 0).getTime() - new Date(a.last_seen_at ?? 0).getTime())
-    .slice(0, 3);
+  // 오늘(한국 시간) 다녀간 다른 가족 (나 제외). 서버는 UTC라 KST 날짜로 비교한다.
+  const kstDay = new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", dateStyle: "short" });
+  const today = kstDay.format(new Date());
+  const todayViewers = viewers
+    .filter(
+      (viewer) =>
+        viewer.last_seen_at && viewer.id !== me?.id && kstDay.format(new Date(viewer.last_seen_at)) === today,
+    )
+    .sort((a, b) => new Date(b.last_seen_at ?? 0).getTime() - new Date(a.last_seen_at ?? 0).getTime());
 
   // 내가 봤다는 표시 남기기
   if (me) {
     await touchViewer(me.id);
+  }
+
+  // 다른 가족이 남긴 새 한마디·답글 알림 (내가 마지막으로 확인한 뒤의 것만)
+  const replyNotices: ReplyNotice[] = [];
+  if (me) {
+    if (!me.replies_checked_at) {
+      // 처음엔 기준점만 잡는다 — 예전에 쌓인 한마디가 첫 방문에 와르르 뜨지 않게.
+      await markRepliesChecked(album.id, me.id);
+    } else {
+      const checkedAt = new Date(me.replies_checked_at).getTime();
+      const allComments = [...commentsByPhoto.values()].flat();
+      const bodyById = new Map(allComments.map((c) => [c.id, c.body]));
+      for (const comment of allComments) {
+        if (comment.viewerId !== me.id && new Date(comment.createdAt).getTime() > checkedAt) {
+          replyNotices.push({
+            photoId: comment.photoId,
+            name: comment.name,
+            body: comment.body,
+            repliedTo: comment.parentId ? bodyById.get(comment.parentId) ?? null : null,
+            createdAt: comment.createdAt,
+          });
+        }
+      }
+      replyNotices.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); // 최신부터
+    }
   }
 
   const childInfo = new Map(children.map((child) => [child.id, { name: child.name, age: koreanAge(child.birthdate) }]));
@@ -299,32 +327,26 @@ export default async function ViewerPage({ params, searchParams }: ViewerPagePro
         </div>
       ) : null}
 
-      {/* 헤더 */}
+      {/* 내 한마디에 새 답글이 왔으면 맨 위에 알려준다 */}
+      {replyNotices.length > 0 ? <ReplyNotices slug={album.share_slug} notices={replyNotices} /> : null}
+
+      {/* 헤더 — 왼쪽은 까꿍 브랜드, 오른쪽은 최근 다녀간 가족 이름 */}
       <header className="flex items-center justify-between gap-2 px-2 pb-2 pt-4">
-        <div className="flex items-center gap-2 min-w-0">
-          <p className="truncate text-base font-bold text-apricot-deep">{album.baby_name}</p>
+        <div className="flex min-w-0 shrink-0 items-center gap-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icon.png" alt="" width={28} height={28} className="h-7 w-7 rounded-lg" />
+          <p className="text-base font-bold text-apricot-deep">까꿍</p>
           {me ? (
             <span className="shrink-0 rounded-full bg-paper-2 px-2.5 py-0.5 text-xs font-semibold text-ink-soft">
               {me.name}
             </span>
           ) : null}
         </div>
-        {/* 최근 방문자 아바타 */}
-        {recentViewers.length > 0 ? (
-          <div className="flex shrink-0 items-center gap-1">
-            <div className="flex items-center">
-              {recentViewers.map((viewer) => (
-                <span
-                  key={viewer.id}
-                  className="-ml-1.5 flex h-7 w-7 items-center justify-center rounded-full border-2 border-paper bg-sage text-[0.625rem] font-bold text-white first:ml-0"
-                  title={viewer.name}
-                >
-                  {viewer.name.slice(0, 1)}
-                </span>
-              ))}
-            </div>
-            <span className="text-xs text-ink-soft">다녀감</span>
-          </div>
+        {todayViewers.length > 0 ? (
+          <p className="min-w-0 truncate text-right text-xs leading-5 text-ink-soft">
+            <span className="font-bold text-sage-deep">{todayViewers.map((viewer) => viewer.name).join("·")}</span>
+            {" 오늘 다녀감"}
+          </p>
         ) : null}
       </header>
 

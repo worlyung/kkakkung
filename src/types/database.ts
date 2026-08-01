@@ -42,6 +42,7 @@ export type Viewer = {
   album_id: string;
   name: string;
   last_seen_at: string | null;
+  replies_checked_at: string | null;
   created_at: string;
 };
 
@@ -49,6 +50,7 @@ export type Comment = {
   id: string;
   photo_id: string;
   viewer_id: string;
+  parent_id: string | null;
   body: string;
   created_at: string;
 };
@@ -120,10 +122,11 @@ export type Database = {
       };
       viewers: {
         Row: Viewer;
-        Insert: Omit<Viewer, "id" | "created_at" | "last_seen_at"> & {
+        Insert: Omit<Viewer, "id" | "created_at" | "last_seen_at" | "replies_checked_at"> & {
           id?: string;
           created_at?: string;
           last_seen_at?: string | null;
+          replies_checked_at?: string | null;
         };
         Update: Partial<Omit<Viewer, "id" | "album_id" | "created_at">>;
         Relationships: [
@@ -138,8 +141,9 @@ export type Database = {
       };
       comments: {
         Row: Comment;
-        Insert: Omit<Comment, "id" | "created_at"> & {
+        Insert: Omit<Comment, "id" | "parent_id" | "created_at"> & {
           id?: string;
+          parent_id?: string | null;
           created_at?: string;
         };
         Update: Partial<Omit<Comment, "id" | "photo_id" | "viewer_id" | "created_at">>;
@@ -156,6 +160,13 @@ export type Database = {
             columns: ["viewer_id"];
             isOneToOne: false;
             referencedRelation: "viewers";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "comments_parent_id_fkey";
+            columns: ["parent_id"];
+            isOneToOne: false;
+            referencedRelation: "comments";
             referencedColumns: ["id"];
           },
         ];

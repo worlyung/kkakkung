@@ -37,6 +37,16 @@ export async function touchViewer(viewerId: string): Promise<void> {
   await supabase.from("viewers").update({ last_seen_at: new Date().toISOString() }).eq("id", viewerId);
 }
 
+// 내 한마디에 달린 답글 알림을 "여기까지 봤어요"로 표시한다.
+export async function markRepliesChecked(albumId: string, viewerId: string): Promise<void> {
+  const supabase = createSupabaseServiceClient();
+  await supabase
+    .from("viewers")
+    .update({ replies_checked_at: new Date().toISOString() })
+    .eq("id", viewerId)
+    .eq("album_id", albumId);
+}
+
 export async function addViewer(albumId: string, name: string): Promise<void> {
   const supabase = createSupabaseServiceClient();
   const { error } = await supabase.from("viewers").insert({ album_id: albumId, name });
